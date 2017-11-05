@@ -37,7 +37,7 @@ def build_neural_network():
     saver = tf.train.Saver()
     sess = tf.Session()
     try:
-        saver.restore(sess, "/tmp/model2.ckpt")
+        saver.restore(sess, "/tmp/model_10_l.ckpt")
     except:
         print('initializing')
         traceback.print_exc()
@@ -70,7 +70,7 @@ def train_neural_network(epochs, optimizer, cost, x, y, sess, prediction, saver)
     accuracy_float = accuracy.eval(session = sess, feed_dict = {x:test_x, y:test_y})
     print('Accuracy:', accuracy_float)
 
-    save_path = saver.save(sess, "/tmp/model2.ckpt")
+    save_path = saver.save(sess, "/tmp/model_10_l.ckpt")
     print("Model saved in file: %s" % save_path)
     return sess, prediction, x, y
 
@@ -114,15 +114,15 @@ def neural_network_model(input_width, nodes_per_layer, x):
     l5 = tf.nn.relu(l5)
     l6 = tf.add(tf.matmul(l5, hidden_6_layer['weights']), hidden_6_layer['biases'])
     l6 = tf.nn.relu(l6)
-    l7 = tf.add(tf.matmul(l1, hidden_7_layer['weights']), hidden_7_layer['biases'])
+    l7 = tf.add(tf.matmul(l6, hidden_7_layer['weights']), hidden_7_layer['biases'])
     l7 = tf.nn.relu(l7)
-    l8 = tf.add(tf.matmul(l2, hidden_8_layer['weights']), hidden_8_layer['biases'])
+    l8 = tf.add(tf.matmul(l7, hidden_8_layer['weights']), hidden_8_layer['biases'])
     l8 = tf.nn.relu(l8)
-    l9 = tf.add(tf.matmul(l3, hidden_9_layer['weights']), hidden_9_layer['biases'])
+    l9 = tf.add(tf.matmul(l8, hidden_9_layer['weights']), hidden_9_layer['biases'])
     l9 = tf.nn.relu(l9)
-    l10 = tf.add(tf.matmul(l4, hidden_10_layer['weights']), hidden_10_layer['biases'])
+    l10 = tf.add(tf.matmul(l9, hidden_10_layer['weights']), hidden_10_layer['biases'])
     l10 = tf.nn.relu(l10)
-    output = tf.matmul(l5, output_layer['weights']) +   output_layer['biases']
+    output = tf.matmul(l10, output_layer['weights']) +   output_layer['biases']
     return output
 
 #reads inputs as an array representing the location of piece ids, moves, turn to play
@@ -210,4 +210,6 @@ def create_feature_sets_and_labels(test_size,  inputs):
     return train_x, train_y, test_x, test_y
 
 if __name__ == '__main__':
-    Model(0)
+    test_model = Model()
+    test_model.train_nn(20)
+    test_model.close_session()

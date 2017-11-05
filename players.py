@@ -56,9 +56,9 @@ class PlayerOpportunisticRandom(Player):
 class PlayerNN(Player):
     def __init__(self, board, color):
         super().__init__(board, color)
-        self.seed = None
+        self.seed = 0
 
-    #for training, i am adding randomness by giving them chances to play random
+    #for training, ii am sampling the returned moves and gettign the bets one
     def pick_move(self, move_num):
         super().pick_move(move_num)
         random_num = random.random()
@@ -237,24 +237,35 @@ def main():
     global ml_model_data
 
     b = game_engine2.Board()
-    games_to_play = 1000
+    games_to_play = 10000
     max_moves = 100
     player_results = {}
     ml_model_data = ml_model.Model()
 
     for i in range(games_to_play):
         print('results:')
-        for i, j in player_results.items():
-            print(i, j)
+
         print()
         try:
-            p1_seed  = random.random()
-            p2_seed = random.random()
-            print('seeds:', p1_seed, p2_seed)
-            p1 = PlayerNN(b, game_engine2.white_color_str)
-            p1.seed = p1_seed
-            p2 = PlayerNN(b, game_engine2.black_color_str)
-            p2.seed = p2_seed
+            rand_strat = random.randint(1, 4)
+            print('rand_strat', rand_strat)
+            if rand_strat == 1:
+                p1_seed  = .25
+                p2_seed = .25
+                print('seeds:', p1_seed, p2_seed)
+                p1 = PlayerNN(b, game_engine2.white_color_str)
+                p1.seed = p1_seed
+                p2 = PlayerNN(b, game_engine2.black_color_str)
+                p2.seed = p2_seed
+            elif rand_strat == 2:
+                p1 = PlayerNN(b, game_engine2.white_color_str)
+                p2 = PlayerRandom(b, game_engine2.black_color_str)
+            elif rand_strat == 3:
+                p1 = PlayerRandom(b, game_engine2.white_color_str)
+                p2 = PlayerNN(b, game_engine2.black_color_str)
+            else:
+                p1 = PlayerRandom(b, game_engine2.white_color_str)
+                p2 = PlayerRandom(b, game_engine2.black_color_str)
 
 
             g = Game(p1, p2, b)
@@ -263,12 +274,15 @@ def main():
             p1.close_variables()
             p2.close_variables()
         except:
-            time.sleep(10)
+            time.sleep(1)
             traceback.print_exc()
+        for i, j in player_results.items():
+            print(i, j)
 
-    ml_model_data.train_nn(5)
+    ml_model_data.train_nn(20)
     ml_model_data.close_session()
     del ml_model_data
+    time.sleep(10)
 
-for i in range(100):
-    main()
+
+main()
