@@ -9,7 +9,21 @@ max_moves_to_record_in_input = 20
 nodes_per_layer = 2000
 input_width = 567
 
-def train_neural_network(nodes_per_layer):
+class Model():
+    def __init__(self, epochs):
+        self.sess, self.prediction, self.x, self.y = train_neural_network(epochs)
+
+    def run_input(self, i):
+        return self.sess.run(self.prediction, feed_dict = {self.x:[i]})
+
+    def close_session(self):
+        self.sess.close()
+
+    def train_nn(self, epochs):
+        pass
+
+#TODO: seperate building and training
+def train_neural_network(epochs):
     start_time = time.time()
     print('Reading data:', time.time() -start_time)
     inputs = read_inputs()
@@ -17,7 +31,6 @@ def train_neural_network(nodes_per_layer):
 
     #data = tf.placeholder('float')
     print('Building network:', time.time() -start_time)
-    print(len(train_x[0]))
     x = tf.placeholder('float', [None, input_width])
     y = tf.placeholder('float', [None, 2])
     prediction = neural_network_model(input_width, nodes_per_layer, x)
@@ -25,47 +38,46 @@ def train_neural_network(nodes_per_layer):
     print('Building optimizer:', time.time() -start_time)
     optimizer = tf.train.AdamOptimizer().minimize(cost)
     batch_size = 10
-    hm_epochs = 25
+    hm_epochs = epochs
     print('Running session:', time.time() -start_time)
 
     saver = tf.train.Saver()
+    sess = tf.Session()
+    try:
+        saver.restore(sess, "/tmp/model2.ckpt")
+    except:
+        print('initializing')
+        traceback.print_exc()
+        sess.run(tf.global_variables_initializer())
+    for epoch in range(hm_epochs):
+        epoch_loss = 0
+        i=0
+        while i < len(train_x):
+            start = i
+            end = i + batch_size
+            batch_x = np.array(train_x[start:end])
+            batch_y = np.array(train_y[start:end])
+            _, c = sess.run([optimizer, cost], feed_dict= {x:batch_x, y:batch_y})
+            epoch_loss += c
+            i += batch_size
+        print("Epoch", epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
 
-    with tf.Session() as sess:
-        try:
-            saver.restore(sess, "/tmp/model2.ckpt")
-        except:
-            print('initializing')
-            traceback.print_exc()
-            sess.run(tf.global_variables_initializer())
-        for epoch in range(hm_epochs):
-            epoch_loss = 0
-            i=0
-            while i < len(train_x):
-                start = i
-                end = i + batch_size
-                batch_x = np.array(train_x[start:end])
-                batch_y = np.array(train_y[start:end])
-                _, c = sess.run([optimizer, cost], feed_dict= {x:batch_x, y:batch_y})
-                epoch_loss += c
-                i += batch_size
-            print("Epoch", epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+    '''for i in zip(test_x, test_y):
+        print()
+        batch_x = i[0]
+        print('Batch:', batch_x)
+        predictions = sess.run(prediction, feed_dict = {x:[i[0]]})
+        print('Prediction:', predictions, 'Result:', i[1])
+    '''
+    correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+    accuracy_float = accuracy.eval(session = sess, feed_dict = {x:test_x, y:test_y})
+    print('Finished learning, time taken:', time.time() - start_time)
+    print('Accuracy:', accuracy_float)
 
-        '''for i in zip(test_x, test_y):
-            print()
-            batch_x = i[0]
-            print('Batch:', batch_x)
-            predictions = sess.run(prediction, feed_dict = {x:[i[0]]})
-            print('Prediction:', predictions, 'Result:', i[1])'''
-
-        correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-        accuracy_float = accuracy.eval(feed_dict = {x:test_x, y:test_y})
-        print('Finished learning, time taken:', time.time() - start_time)
-        print('Accuracy:', accuracy_float)
-
-        save_path = saver.save(sess, "/tmp/model2.ckpt")
-        print("Model saved in file: %s" % save_path)
-
+    save_path = saver.save(sess, "/tmp/model2.ckpt")
+    print("Model saved in file: %s" % save_path)
+    return sess, prediction, x, y
 
 
 # crestes 10 layer neural network
@@ -203,4 +215,4 @@ def create_feature_sets_and_labels(test_size,  inputs):
     return train_x, train_y, test_x, test_y
 
 if __name__ == '__main__':
-    train_neural_network(nodes_per_layer)
+    Model(0)
