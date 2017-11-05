@@ -10,8 +10,8 @@ nodes_per_layer = 2000
 input_width = 567
 
 class Model():
-    def __init__(self, epochs):
-        self.sess, self.prediction, self.x, self.y = train_neural_network(epochs)
+    def __init__(self):
+        self.optimizer, self.cost, self.x, self.y, self.sess, self.prediction, self.saver = build_neural_network()
 
     def run_input(self, i):
         return self.sess.run(self.prediction, feed_dict = {self.x:[i]})
@@ -20,15 +20,11 @@ class Model():
         self.sess.close()
 
     def train_nn(self, epochs):
-        pass
+        train_neural_network(epochs, self.optimizer, self.cost, self.x, self.y, self.sess, self.prediction, self.saver)
 
-#TODO: seperate building and training
-def train_neural_network(epochs):
+def build_neural_network():
     start_time = time.time()
     print('Reading data:', time.time() -start_time)
-    inputs = read_inputs()
-    train_x, train_y, test_x, test_y = create_feature_sets_and_labels(.1, inputs)
-
     #data = tf.placeholder('float')
     print('Building network:', time.time() -start_time)
     x = tf.placeholder('float', [None, input_width])
@@ -37,9 +33,6 @@ def train_neural_network(epochs):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y))
     print('Building optimizer:', time.time() -start_time)
     optimizer = tf.train.AdamOptimizer().minimize(cost)
-    batch_size = 10
-    hm_epochs = epochs
-    print('Running session:', time.time() -start_time)
 
     saver = tf.train.Saver()
     sess = tf.Session()
@@ -49,6 +42,16 @@ def train_neural_network(epochs):
         print('initializing')
         traceback.print_exc()
         sess.run(tf.global_variables_initializer())
+
+    return optimizer, cost, x, y, sess, prediction, saver
+
+def train_neural_network(epochs, optimizer, cost, x, y, sess, prediction, saver):
+    inputs = read_inputs()
+    train_x, train_y, test_x, test_y = create_feature_sets_and_labels(.1, inputs)
+
+    batch_size = 10
+    hm_epochs = epochs
+
     for epoch in range(hm_epochs):
         epoch_loss = 0
         i=0
@@ -62,17 +65,9 @@ def train_neural_network(epochs):
             i += batch_size
         print("Epoch", epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
 
-    '''for i in zip(test_x, test_y):
-        print()
-        batch_x = i[0]
-        print('Batch:', batch_x)
-        predictions = sess.run(prediction, feed_dict = {x:[i[0]]})
-        print('Prediction:', predictions, 'Result:', i[1])
-    '''
     correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
     accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
     accuracy_float = accuracy.eval(session = sess, feed_dict = {x:test_x, y:test_y})
-    print('Finished learning, time taken:', time.time() - start_time)
     print('Accuracy:', accuracy_float)
 
     save_path = saver.save(sess, "/tmp/model2.ckpt")

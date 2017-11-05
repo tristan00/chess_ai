@@ -56,30 +56,43 @@ class PlayerOpportunisticRandom(Player):
 class PlayerNN(Player):
     def __init__(self, board, color):
         super().__init__(board, color)
+        self.seed = None
 
+    #for training, i am adding randomness by giving them chances to play random
     def pick_move(self, move_num):
         super().pick_move(move_num)
-        results = self.board.analyze_round_and_get_nn(self.color)
-        code = results[0]
-        data = results[1]
+        random_num = random.random()
 
-        for i in data:
-            temp = [move_num, self.color]
-            temp.extend(i[1])
-            i[2] = ml_model.turn_input_into_features(temp)
+        if random_num> self.seed:
+            results = self.board.analyze_round_and_get_nn(self.color)
+            code = results[0]
+            data = results[1]
 
-        for i in data:
-            batch_x = i[2]
-            predictions = ml_model_data.run_input(batch_x)
-            #print('prediction:', predictions)
-            if self.color == game_engine2.white_color_str:
-                i[3] = predictions[0][0]
-            elif self.color == game_engine2.black_color_str:
-                i[3] = predictions[0][1]
+            for i in data:
+                temp = [move_num, self.color]
+                temp.extend(i[1])
+                i[2] = ml_model.turn_input_into_features(temp)
 
-        picked_move = sorted(data, key=lambda x: x[3], reverse = True)[0][0]
-        moves = [code, picked_move]
-        return moves
+            for i in data:
+                batch_x = i[2]
+                predictions = ml_model_data.run_input(batch_x)
+                #print('prediction:', predictions)
+                if self.color == game_engine2.white_color_str:
+                    i[3] = predictions[0][0]
+                elif self.color == game_engine2.black_color_str:
+                    i[3] = predictions[0][1]
+
+            picked_move = sorted(data, key=lambda x: x[3], reverse = True)[0][0]
+            moves = [code, picked_move]
+            return moves
+        else:
+            results = self.board.analyze_round_and_get_valid_moves(self.color)
+            if len(results[1]) > 0 :
+                move = random.choice(results[1])
+            else:
+                move = []
+            moves = [results[0], move]
+            return moves
 
     def close_variables(self):
         super().close_variables()
@@ -91,7 +104,7 @@ class Game():
         self.black_player = black_player
         self.set_up_db()
 
-    def run_game(self):
+    def run_game(self, max_moves):
         self.w_win = False
         self.b_win = False
         self.draw = False
@@ -107,7 +120,7 @@ class Game():
         start = time.time()
         move = 1
         print('game:', game_id)
-        while True:
+        while move < max_moves:
             print()
             print('move:', move, ',time:', time.time() - start,
                   ',White pieces:',
@@ -222,11 +235,12 @@ def print_move(move, color):
 
 def main():
     global ml_model_data
-    seed = random.random()
+
     b = game_engine2.Board()
-    games_to_play = 100
+    games_to_play = 1000
+    max_moves = 100
     player_results = {}
-    ml_model_data = ml_model.Model(5)
+    ml_model_data = ml_model.Model()
 
     for i in range(games_to_play):
         print('results:')
@@ -234,21 +248,17 @@ def main():
             print(i, j)
         print()
         try:
-            if seed < .25:
-                p1 = PlayerRandom(b, game_engine2.white_color_str)
-                p2 = PlayerNN(b, game_engine2.black_color_str)
-            elif seed < .5:
-                p1 = PlayerNN(b, game_engine2.white_color_str)
-                p2 = PlayerRandom(b, game_engine2.black_color_str)
-            elif seed < .75:
-                p1 = PlayerRandom(b, game_engine2.white_color_str)
-                p2 = PlayerRandom(b, game_engine2.black_color_str)
-            else:
-                p1 = PlayerNN(b, game_engine2.white_color_str)
-                p2 = PlayerNN(b, game_engine2.black_color_str)
+            p1_seed  = random.random()
+            p2_seed = random.random()
+            print('seeds:', p1_seed, p2_seed)
+            p1 = PlayerNN(b, game_engine2.white_color_str)
+            p1.seed = p1_seed
+            p2 = PlayerNN(b, game_engine2.black_color_str)
+            p2.seed = p2_seed
+
 
             g = Game(p1, p2, b)
-            result = g.run_game()
+            result = g.run_game(max_moves)
             player_results[result] = player_results.get(result, 0) + 1
             p1.close_variables()
             p2.close_variables()
@@ -256,6 +266,7 @@ def main():
             time.sleep(10)
             traceback.print_exc()
 
+    ml_model_data.train_nn(5)
     ml_model_data.close_session()
     del ml_model_data
 
